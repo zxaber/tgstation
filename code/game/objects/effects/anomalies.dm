@@ -184,6 +184,7 @@
 	icon_state = "bluespace"
 	density = TRUE
 	aSignal = /obj/item/assembly/signaler/anomaly/bluespace
+	var/announce = TRUE
 
 /obj/effect/anomaly/bluespace/anomalyEffect()
 	..()
@@ -213,7 +214,8 @@
 			var/turf/TO = get_turf(chosen) // the turf of origin we're travelling TO
 
 			playsound(TO, 'sound/effects/phasein.ogg', 100, TRUE)
-			priority_announce("Massive bluespace translocation detected.", "Anomaly Alert")
+			if(announce)
+				priority_announce("Massive bluespace translocation detected.", "Anomaly Alert")
 
 			var/list/flashers = list()
 			for(var/mob/living/carbon/C in viewers(TO, null))
@@ -249,6 +251,9 @@
 	sleep(20)
 	M.client.screen -= blueeffect
 	qdel(blueeffect)
+
+/obj/effect/anomaly/bluespace/silent //subtype with no centcomm message tacked on
+	announce = FALSE
 
 /////////////////////
 

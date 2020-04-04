@@ -71,6 +71,7 @@
 #define GRAVITATIONAL_ANOMALY "gravitational_anomaly"
 #define FLUX_ANOMALY "flux_anomaly"
 #define PYRO_ANOMALY "pyro_anomaly"
+#define BLUESPACE_ANOMALY "bluespace_anomaly"
 
 //If integrity percent remaining is less than these values, the monitor sets off the relevant alarm.
 #define SUPERMATTER_DELAM_PERCENT 5
@@ -187,6 +188,9 @@ GLOBAL_DATUM(main_supermatter_engine, /obj/machinery/power/supermatter_crystal)
 
 	/// cooldown tracker for accent sounds,
 	var/last_accent_sound = 0
+
+	///Hitting the SM with a bluespace crystal will make it create bluespace anomalies if it's otherwise doing so. Effect is only for a limited time.
+	var/bluespace_doped
 
 /obj/machinery/power/supermatter_crystal/Initialize()
 	. = ..()
@@ -596,6 +600,8 @@ GLOBAL_DATUM(main_supermatter_engine, /obj/machinery/power/supermatter_crystal)
 			supermatter_anomaly_gen(src, GRAVITATIONAL_ANOMALY, rand(5, 10))
 		if((power > SEVERE_POWER_PENALTY_THRESHOLD && prob(2)) || (prob(0.3) && power > POWER_PENALTY_THRESHOLD))
 			supermatter_anomaly_gen(src, PYRO_ANOMALY, rand(5, 10))
+		if(prob(10) && bluespace_doped)
+			supermatter_anomaly_gen(src, BLUESPACE_ANOMALY, rand(5, 10))
 
 	//Tells the engi team to get their butt in gear
 	if(damage > warning_point) // while the core is still damaged and it's still worth noting its status
@@ -758,6 +764,7 @@ GLOBAL_DATUM(main_supermatter_engine, /obj/machinery/power/supermatter_crystal)
 			playsound(src, 'sound/effects/supermatter.ogg', 50, TRUE)
 			radiation_pulse(src, 50, 3)
 			return
+
 	if(istype(W, /obj/item/scalpel/supermatter))
 		var/obj/item/scalpel/supermatter/scalpel = W
 		to_chat(user, "<span class='notice'>You carefully begin to scrape \the [src] with \the [W]...</span>")
@@ -803,9 +810,34 @@ GLOBAL_DATUM(main_supermatter_engine, /obj/machinery/power/supermatter_crystal)
 	else
 		return
 
+		///Bluespace crystals will cause the supermatter to spawn bluespace anomalies if it was already spawning other types. Effect lasts three minutes.
+	///Using a bluespace crystal while the effect is in place will "overload" the effect on the supermatter. Currently, it's just an explosion, but it could be changed later.
+	///The overload still restarts the timer, though, so you get that.
+	if(istype(AM, /obj/item/stack/ore/bluespace_crystal))
+		if(bluespace_doped)
+			explosion(src, 1, 2, 3, 3)
+			addtimer(CALLBACK(src, .proc/remove_bluespace), 3 MINUTES, TIMER_UNIQUE | TIMER_OVERRIDE)
+			return
+		bluespace_doped = TRUE
+		color = "#33aaff"
+		addtimer(CALLBACK(src, .proc/remove_bluespace), 3 MINUTES, TIMER_UNIQUE | TIMER_OVERRIDE)
+
+	///Bluespace sheets will always overload the bluespace effect, because they're multiple crystals in a single item.
+	if(istype(AM, /obj/item/stack/sheet/bluespace_crystal))
+		var/obj/item/stack/sheet/bluespace_crystal/B = AM
+		var/explosionsize = round(2 * (B.amount ** 0.5)) //bigger boom by tossing more in, but with deminishing returns. a 50 stack should return a value of 14.
+		bluespace_doped = TRUE
+		explosion(src, 1, explosionsize, 3, 3)
+		color = "#33aaff"
+		addtimer(CALLBACK(src, .proc/remove_bluespace), 3 MINUTES, TIMER_UNIQUE | TIMER_OVERRIDE)
+
 	playsound(get_turf(src), 'sound/effects/supermatter.ogg', 50, TRUE)
 
 	Consume(AM)
+
+/obj/machinery/power/supermatter_crystal/proc/remove_bluespace()
+	bluespace_doped = FALSE
+	color = null
 
 /obj/machinery/power/supermatter_crystal/intercept_zImpact(atom/movable/AM, levels)
 	. = ..()
@@ -911,6 +943,8 @@ GLOBAL_DATUM(main_supermatter_engine, /obj/machinery/power/supermatter_crystal)
 				new /obj/effect/anomaly/grav(L, 250)
 			if(PYRO_ANOMALY)
 				new /obj/effect/anomaly/pyro(L, 200)
+			if(BLUESPACE_ANOMALY)
+				new /obj/effect/anomaly/bluespace/silent(L, 200)
 
 /obj/machinery/power/supermatter_crystal/proc/supermatter_zap(atom/zapstart = src, range = 5, zap_str = 4000, list/targets_hit = list(), zap_flags = ZAP_SUPERMATTER_FLAGS)
 	if(QDELETED(zapstart))
