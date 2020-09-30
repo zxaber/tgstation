@@ -64,6 +64,9 @@
 			)
 
 	data["removable_media"] = list()
+	var/obj/item/computer_hardware/hard_drive/cart_reader/cartholder = all_components[MC_CART]
+	if(cartholder?.stored_cart)
+		data["removable_media"] += "ROM cartridge"
 	if(all_components[MC_SDD])
 		data["removable_media"] += "removable storage disk"
 	var/obj/item/computer_hardware/ai_slot/intelliholder = all_components[MC_AI]
@@ -81,6 +84,15 @@
 			running = TRUE
 
 		data["programs"] += list(list("name" = P.filename, "desc" = P.filedesc, "running" = running))
+
+	data["programs_cart"] = list()
+	if(cartholder?.stored_cart) //cart reader from the removable media block above
+		for(var/datum/computer_file/program/P in cartholder.stored_files)
+			var/running = FALSE
+			if(P in idle_threads)
+				running = TRUE
+
+			data["programs_cart"] += list(list("name" = P.filename, "desc" = P.filedesc, "running" = running))
 
 	data["has_light"] = has_light
 	data["light_on"] = light_on
@@ -129,9 +141,14 @@
 			to_chat(user, "<span class='notice'>Program [P.filename].[P.filetype] with PID [rand(100,999)] has been killed.</span>")
 
 		if("PC_runprogram")
+			var/container = params["device"]
 			var/prog = params["name"]
 			var/datum/computer_file/program/P = null
 			var/mob/user = usr
+			if(container == "cart_reader")
+				hard_drive = all_components[MC_CART]
+				if(!hard_drive)
+					return FALSE
 			if(hard_drive)
 				P = hard_drive.find_file_by_name(prog)
 
@@ -216,7 +233,11 @@
 					if(!cardholder)
 						return
 					cardholder.try_eject(user)
-
+				if("ROM cartridge")
+					var/obj/item/computer_hardware/hard_drive/cart_reader/cartholder = all_components[MC_CART]
+					if(!cartholder)
+						return
+					cartholder.try_eject(user)
 
 		else
 			return

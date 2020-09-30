@@ -50,47 +50,79 @@
 	var/mob/living/simple_animal/bot/active_bot
 	var/list/botlist = list()
 
+	///ModPC code///
+	///List of modular computer programs that will be installed to this cart
+	var/list/program_index
+	///List of modular computer programs that are installed to this cart.
+	var/list/programs
+
 /obj/item/cartridge/Initialize()
 	. = ..()
 	var/obj/item/pda/pda = loc
 	if(istype(pda))
 		host_pda = pda
 
+	//modPC stuff
+	for(var/datum/computer_file/program/newapp in program_index)
+		programs += new newapp(src)
+
 /obj/item/cartridge/engineering
 	name = "\improper Power-ON cartridge"
 	icon_state = "cart-e"
 	access = CART_ENGINE | CART_DRONEPHONE
 	bot_access_flags = FLOOR_BOT
+	program_index = list(
+		/datum/computer_file/program/supermatter_monitor,
+		/datum/computer_file/program/robocontrol
+	)
 
 /obj/item/cartridge/atmos
 	name = "\improper BreatheDeep cartridge"
 	icon_state = "cart-a"
 	access = CART_ATMOS | CART_DRONEPHONE
 	bot_access_flags = FLOOR_BOT | FIRE_BOT
+	program_index = list(
+		/datum/computer_file/program/atmosscan,
+		/datum/computer_file/program/robocontrol
+	)
 
 /obj/item/cartridge/medical
 	name = "\improper Med-U cartridge"
 	icon_state = "cart-m"
 	access = CART_MEDICAL
 	bot_access_flags = MED_BOT
+	program_index = list(
+		/datum/computer_file/program/robocontrol
+	)
 
 /obj/item/cartridge/chemistry
 	name = "\improper ChemWhiz cartridge"
 	icon_state = "cart-chem"
 	access = CART_REAGENT_SCANNER
 	bot_access_flags = MED_BOT
+	program_index = list(
+		//We need a chem scanner app
+		/datum/computer_file/program/robocontrol
+	)
 
 /obj/item/cartridge/security
 	name = "\improper R.O.B.U.S.T. cartridge"
 	icon_state = "cart-s"
 	access = CART_SECURITY | CART_MANIFEST
 	bot_access_flags = SEC_BOT
+	program_index = list(
+		//We need an arrest record app
+		/datum/computer_file/program/robocontrol
+	)
 
 /obj/item/cartridge/detective
 	name = "\improper D.E.T.E.C.T. cartridge"
 	icon_state = "cart-s"
 	access = CART_SECURITY | CART_MEDICAL | CART_MANIFEST
 	bot_access_flags = SEC_BOT
+	program_index = list(
+		/datum/computer_file/program/robocontrol
+	)
 
 /obj/item/cartridge/janitor
 	name = "\improper CustodiPRO cartridge"
@@ -98,24 +130,30 @@
 	icon_state = "cart-j"
 	access = CART_JANITOR | CART_DRONEPHONE
 	bot_access_flags = CLEAN_BOT
+	program_index = list(
+		/datum/computer_file/program/robocontrol
+	)
 
 /obj/item/cartridge/lawyer
 	name = "\improper P.R.O.V.E. cartridge"
 	icon_state = "cart-s"
 	access = CART_SECURITY
-	spam_enabled = 1
+	spam_enabled = TRUE
 
 /obj/item/cartridge/curator
 	name = "\improper Lib-Tweet cartridge"
 	icon_state = "cart-s"
 	access = CART_NEWSCASTER
+	//We need a newscaster app
 
 /obj/item/cartridge/roboticist
 	name = "\improper B.O.O.P. Remote Control cartridge"
 	desc = "Packed with heavy duty quad-bot interlink!"
 	bot_access_flags = FLOOR_BOT | CLEAN_BOT | MED_BOT | FIRE_BOT
 	access = CART_DRONEPHONE
-
+	program_index = list(
+		/datum/computer_file/program/robocontrol
+	)
 /obj/item/cartridge/signal
 	name = "generic signaler cartridge"
 	desc = "A data cartridge with an integrated radio signaler module."
@@ -125,6 +163,11 @@
 	desc = "Complete with integrated radio signaler!"
 	icon_state = "cart-tox"
 	access = CART_REAGENT_SCANNER | CART_ATMOS
+	program_index = list(
+		//We need a chem scanner app
+		//We need a signaler app
+		/datum/computer_file/program/atmosscan
+	)
 
 /obj/item/cartridge/signal/Initialize()
 	. = ..()
@@ -138,6 +181,10 @@
 	icon_state = "cart-q"
 	access = CART_QUARTERMASTER
 	bot_access_flags = MULE_BOT
+	program_index = list(
+		//Cargo app too?
+		/datum/computer_file/program/robocontrol
+	)
 
 /obj/item/cartridge/head
 	name = "\improper Easy-Record DELUXE cartridge"
@@ -149,12 +196,23 @@
 	icon_state = "cart-h"
 	access = CART_MANIFEST | CART_STATUS_DISPLAY | CART_JANITOR | CART_SECURITY | CART_NEWSCASTER | CART_QUARTERMASTER | CART_DRONEPHONE
 	bot_access_flags = MULE_BOT | CLEAN_BOT
+	program_index = list(
+		/datum/computer_file/program/crew_manifest,
+		/datum/computer_file/program/atmosscan,
+		/datum/computer_file/program/robocontrol
+	)
 
 /obj/item/cartridge/hos
 	name = "\improper R.O.B.U.S.T. DELUXE cartridge"
 	icon_state = "cart-hos"
 	access = CART_MANIFEST | CART_STATUS_DISPLAY | CART_SECURITY
 	bot_access_flags = SEC_BOT
+	program_index = list(
+		//We need an arrest record app
+		/datum/computer_file/program/crew_manifest,
+		/datum/computer_file/program/atmosscan,
+		/datum/computer_file/program/robocontrol
+	)
 
 
 /obj/item/cartridge/ce
@@ -162,18 +220,37 @@
 	icon_state = "cart-ce"
 	access = CART_MANIFEST | CART_STATUS_DISPLAY | CART_ENGINE | CART_ATMOS | CART_DRONEPHONE
 	bot_access_flags = FLOOR_BOT | FIRE_BOT
+	program_index = list(
+		/datum/computer_file/program/crew_manifest,
+		/datum/computer_file/program/atmosscan,
+		/datum/computer_file/program/supermatter_monitor,
+		/datum/computer_file/program/robocontrol
+	)
 
 /obj/item/cartridge/cmo
 	name = "\improper Med-U DELUXE cartridge"
 	icon_state = "cart-cmo"
 	access = CART_MANIFEST | CART_STATUS_DISPLAY | CART_REAGENT_SCANNER | CART_MEDICAL
 	bot_access_flags = MED_BOT
+	program_index = list(
+		//We need a chem scanner app
+		/datum/computer_file/program/crew_manifest,
+		/datum/computer_file/program/atmosscan,
+		/datum/computer_file/program/robocontrol
+	)
 
 /obj/item/cartridge/rd
 	name = "\improper Signal Ace DELUXE cartridge"
 	icon_state = "cart-rd"
 	access = CART_MANIFEST | CART_STATUS_DISPLAY | CART_REAGENT_SCANNER | CART_ATMOS | CART_DRONEPHONE
 	bot_access_flags = FLOOR_BOT | CLEAN_BOT | MED_BOT | FIRE_BOT
+	program_index = list(
+		//We need a chem scanner app
+		//We need a signaler app
+		/datum/computer_file/program/crew_manifest,
+		/datum/computer_file/program/atmosscan,
+		/datum/computer_file/program/robocontrol
+	)
 
 /obj/item/cartridge/rd/Initialize()
 	. = ..()
@@ -185,7 +262,13 @@
 	icon_state = "cart-c"
 	access = ~(CART_CLOWN | CART_MIME | CART_REMOTE_DOOR)
 	bot_access_flags = SEC_BOT | MULE_BOT | FLOOR_BOT | CLEAN_BOT | MED_BOT | FIRE_BOT
-	spam_enabled = 1
+	spam_enabled = TRUE
+	program_index = list(
+		//We need an arrest record app
+		/datum/computer_file/program/crew_manifest,
+		/datum/computer_file/program/atmosscan,
+		/datum/computer_file/program/robocontrol
+	)
 
 /obj/item/cartridge/captain/Initialize()
 	. = ..()

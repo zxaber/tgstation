@@ -25,6 +25,7 @@ export const NtosMain = (props, context) => {
   const {
     device_theme,
     programs = [],
+    programs_cart = [],
     has_light,
     light_on,
     comp_light_color,
@@ -130,6 +131,39 @@ export const NtosMain = (props, context) => {
             ))}
           </Table>
         </Section>
+        (program_cart.length && {
+          <Section title="Cart Programs">
+            <Table>
+              {programs_cart.map(program_c => (
+                <Table.Row key={program_c.name}>
+                  <Table.Cell>
+                    <Button
+                      fluid
+                      color="transparent"
+                      icon={PROGRAM_ICONS[program_c.name]
+                        || 'window-maximize-o'}
+                      content={program_c.desc}
+                      onClick={() => act('PC_runprogram', {
+                        name: program_c.name, device: "cart"
+                      })} />
+                  </Table.Cell>
+                  <Table.Cell collapsing width="18px">
+                    {!!program_c.running && (
+                      <Button
+                        color="transparent"
+                        icon="times"
+                        tooltip="Close program"
+                        tooltipPosition="left"
+                        onClick={() => act('PC_killprogram', {
+                          name: program.name, device: "cart"
+                      })} />
+                    )}
+                  </Table.Cell>
+                </Table.Row>
+              ))}
+            </Table>
+          </Section>
+        })
       </NtosWindow.Content>
     </NtosWindow>
   );
