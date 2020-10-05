@@ -403,6 +403,10 @@
 	uninstall_component(H, user)
 	return
 
+/obj/item/modular_computer/attack(atom/target, mob/living/user)
+	if(!active_program?.tap())
+		return ..()
+	user.visible_message("<span class='notice'>[user] taps the [src] on [icon2html(icon, viewers(user))] [target].</span>", "<span class='notice'>You tap the [src] on [icon2html(icon, user)] [target].</span>")
 
 /obj/item/modular_computer/attackby(obj/item/W as obj, mob/user as mob)
 	// Check for ID first

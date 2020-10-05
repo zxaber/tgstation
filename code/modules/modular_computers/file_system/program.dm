@@ -177,6 +177,23 @@
 		generate_network_log("Connection closed -- Program ID: [filename] User:[ID?"[ID.registered_name]":"None"]")
 	return 1
 
+/**
+  *
+  * Processes any functions that run when the device is tapped on an atom
+  *
+  * This proc is called by the host computer's attack function. Returning
+  * TRUE will halt the attack, and FALSE will tell the computer that no
+  * tap functionality exists for this program on that atom (or by said
+  * user). Default functionality is to simply return FALSE, override
+  * without parent call to use tap functions.
+  *
+  * Arguments
+  * target is the atom being tapped. It is up to the program to check the type.
+  * user is the mob that tapped.
+**/
+/datum/computer_file/program/proc/tap(atom/target, mob/living/carbon/human/user)
+	return FALSE
+
 /datum/computer_file/program/ui_interact(mob/user, datum/tgui/ui)
 	ui = SStgui.try_update_ui(user, src, ui)
 	if(!ui && tgui_id)
