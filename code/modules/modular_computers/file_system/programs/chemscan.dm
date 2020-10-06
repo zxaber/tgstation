@@ -7,7 +7,7 @@
 	tgui_id = "NtosChem"
 	program_icon = "flask"
 	///List of information relating to the scanned object or the reagent holder
-	/var/list/containerinfo
+	var/list/containerinfo
 	///List that holds the target scan data, for when the scanner is used on a reagent holder.
 	var/list/reagentslist
 	///Error code for various issues with getting a proper scan.
@@ -54,6 +54,9 @@
 	data["reagentslist"] = list(reagentslist)
 	data["containerinfo"] = list(containerinfo)
 	data["errorlevel"] = errorlevel
+	data["absolute_percentage"] = absolute_percentage
+
+	return data
 
 /datum/computer_file/program/chemscan/ui_act(action, list/params)
 	. = ..()
