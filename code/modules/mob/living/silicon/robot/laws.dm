@@ -70,7 +70,7 @@
 			if (length(temp) > 0)
 				laws.supplied[index] = temp
 
-		var/datum/computer_file/program/robotact/program = modularInterface.get_robotact()
+		var/datum/computer_file/program/robotact/program = modularInterface.get_silicon_app()
 		if(program)
 			program.force_full_update()
 

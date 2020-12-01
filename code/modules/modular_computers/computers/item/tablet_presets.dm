@@ -69,10 +69,18 @@
 	install_component(new /obj/item/computer_hardware/hard_drive/small/nukeops)
 	install_component(new /obj/item/computer_hardware/network_card)
 
-//Borg Built-in tablet
-/obj/item/modular_computer/tablet/integrated/Initialize()
+//AI Built-in tablet
+/obj/item/modular_computer/tablet/integrated/ai/Initialize()
 	. = ..()
 	install_component(new /obj/item/computer_hardware/processor_unit/small)
-	install_component(new /obj/item/computer_hardware/hard_drive/small/integrated)
-	install_component(new /obj/item/computer_hardware/recharger/cyborg)
-	install_component(new /obj/item/computer_hardware/network_card/integrated)
+	install_component(new /obj/item/computer_hardware/hard_drive/small/ai)
+	install_component(new /obj/item/computer_hardware/recharger/silicon)
+	install_component(new /obj/item/computer_hardware/network_card/ai)
+
+//Borg Built-in tablet
+/obj/item/modular_computer/tablet/integrated/borg/Initialize()
+	. = ..()
+	install_component(new /obj/item/computer_hardware/processor_unit/small)
+	install_component(new /obj/item/computer_hardware/hard_drive/small/borg)
+	install_component(new /obj/item/computer_hardware/recharger/silicon)
+	install_component(new /obj/item/computer_hardware/network_card/borg)

@@ -76,13 +76,13 @@
 			return TRUE
 	return FALSE
 
-/// This recharger exists only in borg built-in tablets. I would have tied it to the borg's cell but
-/// the program that displays laws should always be usable, and the exceptions were starting to pile.
-/obj/item/computer_hardware/recharger/cyborg
+/// This recharger exists only in silicon built-in tablets. I would have tied it to the silicon's power state
+/// but the program that displays laws should always be usable, and the exceptions were starting to pile.
+/obj/item/computer_hardware/recharger/silicon
 	name = "modular interface power harness"
 	desc = "A standard connection to power a small computer device from a cyborg's chassis."
 
-/obj/item/computer_hardware/recharger/cyborg/use_power(amount, charging=0)
+/obj/item/computer_hardware/recharger/silicon/use_power(amount, charging=0)
 	return TRUE
 
 

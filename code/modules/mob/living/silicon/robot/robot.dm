@@ -95,7 +95,7 @@
 	hud_possible = list(ANTAG_HUD, DIAG_STAT_HUD, DIAG_HUD, DIAG_BATT_HUD, DIAG_TRACK_HUD)
 
 	///The reference to the built-in tablet that borgs carry.
-	var/obj/item/modular_computer/tablet/integrated/modularInterface
+	var/obj/item/modular_computer/tablet/integrated/borg/modularInterface
 	var/atom/movable/screen/robot/modPC/interfaceButton
 
 	var/list/upgrades = list()
@@ -675,7 +675,7 @@
 
 /mob/living/silicon/robot/modules/syndicate/create_modularInterface()
 	if(!modularInterface)
-		modularInterface = new /obj/item/modular_computer/tablet/integrated/syndicate(src)
+		modularInterface = new /obj/item/modular_computer/tablet/integrated/borg/syndicate(src)
 	return ..()
 
 /mob/living/silicon/robot/modules/syndicate/proc/show_playstyle()
@@ -1100,8 +1100,13 @@
 /mob/living/silicon/robot/proc/TryConnectToAI()
 	set_connected_ai(select_active_ai_with_fewest_borgs(z))
 	if(connected_ai)
+		var/obj/item/modular_computer/tablet/integrated/ai/ai_tablet = connected_ai.modularInterface.
+		if(!ai_tablet.logbook[src])
+			ai_tablet.logbook[src] = list()
+		ai_tablet.logbook[src][0] = "/log/cyborgs/[name].txt" //The borg's name is the first entry, which the AI tablet uses to find the name so that a deleted borg doesn't break the log
 		lawsync()
 		lawupdate = TRUE
+		logevent("EVENT -- Connection to [connected_ai] established.")
 		return TRUE
 	picturesync()
 	return FALSE
@@ -1153,7 +1158,12 @@
 	if(!modularInterface)
 		stack_trace("Cyborg [src] ( [type] ) was somehow missing their integrated tablet. Please make a bug report.")
 		create_modularInterface()
-	modularInterface.borglog += "[station_time_timestamp()] - [string]"
-	var/datum/computer_file/program/robotact/program = modularInterface.get_robotact()
+	var/logtext = "[station_time_timestamp()] - [string]"
+	modularInterface.borglog += logtext
+	var/datum/computer_file/program/robotact/program = modularInterface.get_silicon_app()
 	if(program)
 		program.force_full_update()
+	if(connected_ai)
+		connected_ai.modularInterface.logbook[src] += logtext
+		var/datum/computer_file/program/aicontrol/ai_program = connected_ai.modularInterface.get_silicon_app()
+		ai_program.force_full_update()

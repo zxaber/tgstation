@@ -2,7 +2,7 @@
 	filename = "robotact"
 	filedesc = "RoboTact"
 	extended_desc = "A built-in app for cyborg self-management and diagnostics."
-	ui_header = "robotact.gif" //DEBUG -- new icon before PR
+	ui_header = "robotact.gif"
 	program_icon_state = "command"
 	requires_ntnet = FALSE
 	transfer_access = null
@@ -14,14 +14,14 @@
 	tgui_id = "NtosRobotact"
 	program_icon = "terminal"
 	///A typed reference to the computer, specifying the borg tablet type
-	var/obj/item/modular_computer/tablet/integrated/tablet
+	var/obj/item/modular_computer/tablet/integrated/borg/tablet
 
 /datum/computer_file/program/robotact/Destroy()
 	tablet = null
 	return ..()
 
 /datum/computer_file/program/robotact/run_program(mob/living/user)
-	if(!istype(computer, /obj/item/modular_computer/tablet/integrated))
+	if(!istype(computer, /obj/item/modular_computer/tablet/integrated/borg))
 		to_chat(user, "<span class='warning'>A warning flashes across \the [computer]: Device Incompatible.</span>")
 		return FALSE
 	. = ..()
@@ -58,13 +58,13 @@
 	data["thrustersInstalled"] = borgo.ionpulse //If we have a thruster uprade
 	data["thrustersStatus"] = "[borgo.ionpulse_on?"ACTIVE":"DISABLED"]" //Feedback for thruster status
 
-	//DEBUG -- Cover, TRUE for locked
+	//Cover, TRUE for locked
 	data["cover"] = "[borgo.locked? "LOCKED":"UNLOCKED"]"
 	//Ability to move. FAULT if lockdown wire is cut, DISABLED if borg locked, ENABLED otherwise
 	data["locomotion"] = "[borgo.wires.is_cut(WIRE_LOCKDOWN)?"FAULT":"[borgo.lockcharge?"DISABLED":"ENABLED"]"]"
 	//Module wire. FAULT if cut, NOMINAL otherwise
 	data["wireModule"] = "[borgo.wires.is_cut(WIRE_RESET_MODULE)?"FAULT":"NOMINAL"]"
-	//DEBUG -- Camera(net) wire. FAULT if cut (or no cameranet camera), DISABLED if pulse-disabled, NOMINAL otherwise
+	//Camera(net) wire. FAULT if cut (or no cameranet camera), DISABLED if pulse-disabled, NOMINAL otherwise
 	data["wireCamera"] = "[!borgo.builtInCamera || borgo.wires.is_cut(WIRE_CAMERA)?"FAULT":"[borgo.builtInCamera.can_use()?"NOMINAL":"DISABLED"]"]"
 	//AI wire. FAULT if wire is cut, CONNECTED if connected to AI, READY otherwise
 	data["wireAI"] = "[borgo.wires.is_cut(WIRE_AI)?"FAULT":"[borgo.connected_ai?"CONNECTED":"READY"]"]"

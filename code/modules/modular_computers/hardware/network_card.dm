@@ -78,17 +78,36 @@
 	icon_state = "net_wired"
 	w_class = WEIGHT_CLASS_NORMAL
 
-/obj/item/computer_hardware/network_card/integrated //Borg tablet version, only works while the borg has power and is not locked
+///Silicon tablet parts
+
+/obj/item/computer_hardware/network_card/ai //AI tablet version, only works while the AI has external power
+	name = "AI data link"
+
+/obj/item/computer_hardware/network_card/borg //Borg tablet version, only works while the borg has power and is not locked
 	name = "cyborg data link"
 
-/obj/item/computer_hardware/network_card/integrated/get_signal(specific_action = 0)
-	var/obj/item/modular_computer/tablet/integrated/modularInterface = holder
+/obj/item/computer_hardware/network_card/ai/get_signal(specific_action = 0)
+	var/obj/item/modular_computer/tablet/integrated/ai/modularInterface = holder
+
+	if(!modularInterface || !istype(modularInterface))
+		return FALSE //wrong type of tablet
+
+	if(!modularInterface.AI)
+		return FALSE //No AI ref found
+
+	if(modularInterface.AI.aiRestorePowerRoutine)
+		return FALSE //AI losing power means no networking
+
+	return ..()
+
+/obj/item/computer_hardware/network_card/borg/get_signal(specific_action = 0)
+	var/obj/item/modular_computer/tablet/integrated/borg/modularInterface = holder
 
 	if(!modularInterface || !istype(modularInterface))
 		return FALSE //wrong type of tablet
 
 	if(!modularInterface.borgo)
-		return FALSE //No borg found
+		return FALSE //No borg ref found
 
 	if(modularInterface.borgo.lockcharge)
 		return FALSE //lockdown restricts borg networking
