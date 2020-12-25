@@ -71,6 +71,10 @@
 /obj/item/modular_computer/tablet/integrated/Initialize(mapload)
 	. = ..()
 	vis_flags |= VIS_INHERIT_ID
+	if(istype(loc, /mob/living/silicon))
+		host = loc
+	else
+		CRASH("Integrated silicon-only tablet created outside silicon. Please make a bug report.")
 
 /**
   * Returns a ref to the silicon's self manage app, creating the app if need be. This whole comment needs to be rewritten

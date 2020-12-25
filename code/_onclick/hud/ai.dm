@@ -46,6 +46,26 @@
 	var/mob/living/silicon/ai/AI = usr
 	AI.toggle_camera_light()
 
+/atom/movable/screen/ai/camera_up
+	name = "Move to Floor Above"
+	icon_state = "camera_up"
+
+/atom/movable/screen/ai/camera_up/Click()
+	if(..())
+		return
+	var/mob/living/silicon/ai/AI = usr
+	AI.zMove(UP, TRUE)
+
+/atom/movable/screen/ai/camera_down
+	name = "Move to Floor Below"
+	icon_state = "camera_down"
+
+/atom/movable/screen/ai/camera_down/Click()
+	if(..())
+		return
+	var/mob/living/silicon/ai/AI = usr
+	AI.zMove(DOWN, TRUE)
+
 /atom/movable/screen/ai/crew_monitor
 	name = "Crew Monitoring Console"
 	icon_state = "crew_monitor"
@@ -55,10 +75,6 @@
 		return
 	var/mob/living/silicon/ai/AI = usr
 	GLOB.crewmonitor.show(AI,AI)
-
-/atom/movable/screen/ai/crew_manifest
-	name = "Crew Manifest"
-	icon_state = "manifest"
 
 /atom/movable/screen/ai/crew_manifest/Click()
 	if(..())
@@ -96,16 +112,6 @@
 	var/mob/living/silicon/ai/AI = usr
 	AI.ai_call_shuttle()
 
-/atom/movable/screen/ai/state_laws
-	name = "State Laws"
-	icon_state = "state_laws"
-
-/atom/movable/screen/ai/state_laws/Click()
-	if(..())
-		return
-	var/mob/living/silicon/ai/AI = usr
-	AI.checklaws()
-
 /atom/movable/screen/ai/pda_msg_send
 	name = "PDA - Send Message"
 	icon_state = "pda_send"
@@ -130,6 +136,17 @@
 	name = "Take Image"
 	icon_state = "take_picture"
 
+/atom/movable/screen/ai/modPC
+	name = "Modular Interface"
+	icon_state = "template"
+	var/mob/living/silicon/ai/artint
+
+/atom/movable/screen/ai/modPC/Click()
+	. = ..()
+	if(.)
+		return
+	artint.modularInterface?.interact(artint)
+
 /atom/movable/screen/ai/image_take/Click()
 	if(..())
 		return
@@ -140,16 +157,15 @@
 		var/mob/living/silicon/robot/R = usr
 		R.aicamera.toggle_camera_mode(usr)
 
-/atom/movable/screen/ai/image_view
-	name = "View Images"
-	icon_state = "view_images"
+/atom/movable/screen/ai/radio
+	name = "Transceiver Settings"
+	icon_state = "radio"
 
-/atom/movable/screen/ai/image_view/Click()
+/atom/movable/screen/ai/radio/Click()
 	if(..())
 		return
-	if(isAI(usr))
-		var/mob/living/silicon/ai/AI = usr
-		AI.aicamera.viewpictures(usr)
+	var/mob/living/silicon/ai/artint = usr
+	artint.radio.interact(artint)
 
 /atom/movable/screen/ai/sensors
 	name = "Sensor Augmentation"
@@ -219,15 +235,20 @@
 	using.hud = src
 	static_inventory += using
 
-//Crew Monitoring
-	using = new /atom/movable/screen/ai/crew_monitor()
-	using.screen_loc = ui_ai_crew_monitor
+//Camera floor navigating
+	using = new /atom/movable/screen/ai/camera_up()
+	using.screen_loc = ui_ai_camera_up
 	using.hud = src
 	static_inventory += using
 
-//Crew Manifest
-	using = new /atom/movable/screen/ai/crew_manifest()
-	using.screen_loc = ui_ai_crew_manifest
+	using = new /atom/movable/screen/ai/camera_down()
+	using.screen_loc = ui_ai_camera_down
+	using.hud = src
+	static_inventory += using
+
+//Crew Monitoring
+	using = new /atom/movable/screen/ai/crew_monitor()
+	using.screen_loc = ui_ai_crew_monitor
 	using.hud = src
 	static_inventory += using
 
@@ -249,11 +270,17 @@
 	using.hud = src
 	static_inventory += using
 
-//Laws
-	using = new /atom/movable/screen/ai/state_laws()
-	using.screen_loc = ui_ai_state_laws
+//AI Integrated Tablet
+	using = new /atom/movable/screen/ai/modPC()
+	using.screen_loc = ui_ai_tablet
 	using.hud = src
 	static_inventory += using
+	var/mob/living/silicon/ai/artint = mymob
+	artint.interfaceButton = using
+	if(artint.modularInterface)
+		using.vis_contents += artint.modularInterface
+	var/atom/movable/screen/ai/modPC/tabletbutton = using
+	tabletbutton.artint = artint
 
 //PDA message
 	using = new /atom/movable/screen/ai/pda_msg_send()
@@ -273,9 +300,9 @@
 	using.hud = src
 	static_inventory += using
 
-//View images
-	using = new /atom/movable/screen/ai/image_view()
-	using.screen_loc = ui_ai_view_images
+//Radio
+	using = new /atom/movable/screen/ai/radio()
+	using.screen_loc = ui_ai_radio
 	using.hud = src
 	static_inventory += using
 

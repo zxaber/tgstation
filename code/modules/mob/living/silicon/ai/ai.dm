@@ -166,8 +166,7 @@
 	if(isturf(loc))
 		add_verb(src, list(/mob/living/silicon/ai/proc/ai_network_change, \
 		/mob/living/silicon/ai/proc/ai_statuschange, /mob/living/silicon/ai/proc/ai_hologram_change, \
-		/mob/living/silicon/ai/proc/botcall, /mob/living/silicon/ai/proc/control_integrated_radio, \
-		/mob/living/silicon/ai/proc/set_automatic_say_channel))
+		/mob/living/silicon/ai/proc/botcall, /mob/living/silicon/ai/proc/control_integrated_radio))
 
 	GLOB.ai_list += src
 	GLOB.shuttle_caller_list += src
@@ -178,9 +177,11 @@
 	ADD_TRAIT(src, TRAIT_PULL_BLOCKED, ROUNDSTART_TRAIT)
 	ADD_TRAIT(src, TRAIT_HANDS_BLOCKED, ROUNDSTART_TRAIT)
 
+	create_modularInterface()
+
 /mob/living/silicon/ai/proc/create_modularInterface()
 	if(!modularInterface)
-		modularInterface = new /obj/item/modular_computer/tablet/integrated(src)
+		modularInterface = new /obj/item/modular_computer/tablet/integrated/ai(src)
 	modularInterface.layer = ABOVE_HUD_PLANE
 	modularInterface.plane = ABOVE_HUD_PLANE
 
@@ -242,9 +243,15 @@
 		var/preferred_icon = input ? input : C.prefs.preferred_ai_core_display
 		icon_state = resolve_ai_icon(preferred_icon)
 
-/mob/living/silicon/ai/verb/pick_icon()
-	set category = "AI Commands"
-	set name = "Set AI Core Display"
+/**
+  * Opens radial for selecting core image
+  *
+  * Runs cleanup of overlays, and then moves the AI's view back
+  * to their own core. Afterwards, a radial is spawned to allow
+  * the AI to select a new sprite. Does not override the player's
+  * preference setting for the core sprite.
+ */
+/mob/living/silicon/ai/proc/pick_icon()
 	if(incapacitated())
 		return
 	icon = initial(icon)
@@ -372,9 +379,14 @@
 /mob/living/silicon/ai/cancel_camera()
 	view_core()
 
-/mob/living/silicon/ai/verb/toggle_anchor()
-	set category = "AI Commands"
-	set name = "Toggle Floor Bolts"
+/**
+  * Toggles the AI's floor bolts.
+  *
+  * If the AI is on the floor (visually "in a core"), the proc will attempt to toggle the
+  * floor bolts. If the AI is on backup battery, doing so will eat a quarter of the total
+  * charge, or fail if there's not enough power.
+ */
+/mob/living/silicon/ai/proc/toggle_anchor()
 	if(!isturf(loc)) // if their location isn't a turf
 		return // stop
 	if(stat == DEAD)
@@ -617,10 +629,13 @@
 	to_chat(src, "<span class='notice'>Switched to the \"[uppertext(network)]\" camera network.</span>")
 //End of code by Mord_Sith
 
+/**
+  * Allows AI to set status displays
+  *
+  * Opens a selection box that allows the AI to pick one of several sprites to
+  * display on AI status monitors across the station.
+ */
 /mob/living/silicon/ai/proc/ai_statuschange()
-	set category = "AI Commands"
-	set name = "AI Status"
-
 	if(incapacitated())
 		return
 	var/list/ai_emotions = list("Very Happy", "Happy", "Neutral", "Unsure", "Confused", "Sad", "BSOD", "Blank", "Problems?", "Awesome", "Facepalm", "Thinking", "Friend Computer", "Dorfy", "Blue Glow", "Red Glow")
@@ -779,15 +794,6 @@
 /mob/living/silicon/ai/proc/set_syndie_radio()
 	if(radio)
 		radio.make_syndie()
-
-/mob/living/silicon/ai/proc/set_automatic_say_channel()
-	set name = "Set Auto Announce Mode"
-	set desc = "Modify the default radio setting for your automatic announcements."
-	set category = "AI Commands"
-
-	if(incapacitated())
-		return
-	set_autosay()
 
 /mob/living/silicon/ai/transfer_ai(interaction, mob/user, mob/living/silicon/ai/AI, obj/item/aicard/card)
 	if(!..())
