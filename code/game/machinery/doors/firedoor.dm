@@ -1,6 +1,10 @@
 #define CONSTRUCTION_PANEL_OPEN 1 //Maintenance panel is open, still functioning
 #define CONSTRUCTION_NO_CIRCUIT 2 //Circuit board removed, can safely weld apart
 #define DEFAULT_STEP_TIME 20 /// default time for each step
+#define FD_NONE 0	//no alarm
+#define FD_FIRE 1	//alarm type is fire
+#define FD_COLD 2	//alarm type is cold
+#define FD_MAN 3	//alarm was pulled manually
 
 /obj/machinery/door/firedoor
 	name = "firelock"
@@ -21,13 +25,22 @@
 	assemblytype = /obj/structure/firelock_frame
 	armor = list(MELEE = 10, BULLET = 30, LASER = 20, ENERGY = 20, BOMB = 30, BIO = 100, RAD = 100, FIRE = 95, ACID = 70)
 	interaction_flags_machine = INTERACT_MACHINE_WIRES_IF_OPEN | INTERACT_MACHINE_ALLOW_SILICON | INTERACT_MACHINE_OPEN_SILICON | INTERACT_MACHINE_REQUIRES_SILICON | INTERACT_MACHINE_OPEN
+	///Var for if we're sniffing the air. Emagging the local fire alarm will disable this.
+	var/detecting = TRUE
+	///Holds the basic reason of why the door triggered.
+	var/alarmtype = FD_NONE
 	var/nextstate = null
 	var/boltslocked = TRUE
 	var/list/affecting_areas
 
 /obj/machinery/door/firedoor/Initialize()
 	. = ..()
+	name = "DEBUG firelock [rand(0-100)]"
 	CalculateAffectingAreas()
+
+/obj/machinery/door/firedoor/ComponentInitialize()
+	. = ..()
+	AddElement(/datum/element/atmos_sensitive)
 
 /obj/machinery/door/firedoor/examine(mob/user)
 	. = ..()
@@ -62,6 +75,7 @@
 /obj/machinery/door/firedoor/Destroy()
 	remove_from_areas()
 	affecting_areas.Cut()
+	reset()
 	return ..()
 
 /obj/machinery/door/firedoor/Bumped(atom/movable/AM)
@@ -179,6 +193,8 @@
 /obj/machinery/door/firedoor/open()
 	. = ..()
 	latetoggle()
+	if(alarmtype != FD_NONE)
+		addtimer(CALLBACK(src, .proc/close), 5 SECONDS, TIMER_UNIQUE)
 
 /obj/machinery/door/firedoor/close()
 	. = ..()
@@ -210,6 +226,45 @@
 		if(FIREDOOR_CLOSED)
 			nextstate = null
 			close()
+
+/obj/machinery/door/firedoor/should_atmos_process(datum/gas_mixture/air, exposed_temperature)
+	return (exposed_temperature > T0C + 200 || exposed_temperature < BODYTEMP_COLD_DAMAGE_LIMIT) && !(obj_flags & EMAGGED) && !machine_stat
+
+/obj/machinery/door/firedoor/atmos_expose(datum/gas_mixture/air, exposed_temperature)
+	if(!detecting)
+		return
+	if(alarmtype != FD_NONE)
+		return //Already activated, we good
+	activate(FD_FIRE) //DEBUG -- add check for fire vs cold
+
+/obj/machinery/door/firedoor/atmos_end(datum/gas_mixture/air, exposed_temperature)
+	if(!detecting)
+		return
+	reset()
+
+/obj/machinery/door/firedoor/proc/activate(type)
+	if(type == FD_NONE)
+		return
+	alarmtype = type
+	if(!density)
+		INVOKE_ASYNC(src, .proc/close)
+	var/area/myarea = get_area(src)
+	myarea.engaged_firelocks |= src
+	myarea.fire = TRUE
+	//debug -- Tell fire alarm to make sounds
+
+	//The following makes adjacent firelocks share alarm states
+	var/list/neighbors = orange(1, src)
+	for(var/obj/machinery/door/firedoor/otherreddoor in neighbors)
+		if(otherreddoor.alarmtype == FD_NONE)
+			otherreddoor.activate(type)
+
+/obj/machinery/door/firedoor/proc/reset()
+	alarmtype = FD_NONE
+	if(density)
+		open()
+	var/area/myarea = get_area(src)
+	myarea.engaged_firelocks -= src
 
 /obj/machinery/door/firedoor/border_only
 	icon = 'icons/obj/doors/edge_Doorfire.dmi'

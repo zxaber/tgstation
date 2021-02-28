@@ -31,13 +31,9 @@
 
 	//Trick to get the glowing overlay visible from a distance
 	luminosity = 1
-
 	var/detecting = 1
 	var/buildstage = 2 // 2 = complete, 1 = no wires, 0 = circuit gone
 	COOLDOWN_DECLARE(last_alarm)
-	var/area/myarea = null
-	//Has this firealarm been triggered by its enviroment?
-	var/triggered = FALSE
 
 /obj/machinery/firealarm/Initialize(mapload, dir, building)
 	. = ..()
@@ -49,18 +45,15 @@
 		pixel_x = (dir & 3)? 0 : (dir == 4 ? -24 : 24)
 		pixel_y = (dir & 3)? (dir ==1 ? -24 : 24) : 0
 	update_appearance()
-	myarea = get_area(src)
+	var/area/myarea = get_area(src)
 	LAZYADD(myarea.firealarms, src)
 
-/obj/machinery/firealarm/ComponentInitialize()
-	. = ..()
-	AddElement(/datum/element/atmos_sensitive)
-
 /obj/machinery/firealarm/Destroy()
+	var/area/myarea = get_area(src)
 	LAZYREMOVE(myarea.firealarms, src)
-	if(triggered)
-		triggered = FALSE
-		myarea.triggered_firealarms -= 1
+	//if(triggered)
+	//	triggered = FALSE
+	//	myarea.triggered_firealarms -= 1
 	return ..()
 
 /obj/machinery/firealarm/update_icon_state()
@@ -88,9 +81,9 @@
 		SSvis_overlays.add_vis_overlay(src, icon, "fire_[SEC_LEVEL_GREEN]", layer, plane, dir)
 		SSvis_overlays.add_vis_overlay(src, icon, "fire_[SEC_LEVEL_GREEN]", layer, EMISSIVE_PLANE, dir)
 
-	var/area/A = get_area(src)
+	var/area/myarea = get_area(src)
 
-	if(!detecting || !A.fire)
+	if(!detecting || !myarea.engaged_firelocks.len)
 		. += "fire_off"
 		SSvis_overlays.add_vis_overlay(src, icon, "fire_off", layer, plane, dir)
 		SSvis_overlays.add_vis_overlay(src, icon, "fire_off", layer, EMISSIVE_PLANE, dir)
@@ -103,7 +96,7 @@
 		SSvis_overlays.add_vis_overlay(src, icon, "fire_on", layer, plane, dir)
 		SSvis_overlays.add_vis_overlay(src, icon, "fire_on", layer, EMISSIVE_PLANE, dir)
 
-	if(!panel_open && detecting && triggered) //It just looks horrible with the panel open
+	if(!panel_open && detecting && myarea.engaged_firelocks.len) //It just looks horrible with the panel open
 		. += "fire_detected"
 		SSvis_overlays.add_vis_overlay(src, icon, "fire_detected", layer, plane, dir)
 		SSvis_overlays.add_vis_overlay(src, icon, "fire_detected", layer, EMISSIVE_PLANE, dir) //Pain
@@ -124,12 +117,15 @@
 	update_appearance()
 	if(user)
 		user.visible_message("<span class='warning'>Sparks fly out of [src]!</span>",
-							"<span class='notice'>You emag [src], disabling its thermal sensors.</span>")
+							"<span class='notice'>You override the protocals of [src], disabling the thermal sensors on the fire locks in this area.</span>")
 	playsound(src, "sparks", 50, TRUE, SHORT_RANGE_SOUND_EXTRARANGE)
+	var/area/myarea = get_area(src)
+	for(var/obj/machinery/door/firedoor/reddoor in myarea)
+		reddoor.detecting = FALSE
 
-/obj/machinery/firealarm/should_atmos_process(datum/gas_mixture/air, exposed_temperature)
-	return (exposed_temperature > T0C + 200 || exposed_temperature < BODYTEMP_COLD_DAMAGE_LIMIT) && !(obj_flags & EMAGGED) && !machine_stat
-
+///obj/machinery/firealarm/should_atmos_process(datum/gas_mixture/air, exposed_temperature)
+//	return (exposed_temperature > T0C + 200 || exposed_temperature < BODYTEMP_COLD_DAMAGE_LIMIT) && !(obj_flags & EMAGGED) && !machine_stat
+/*
 /obj/machinery/firealarm/atmos_expose(datum/gas_mixture/air, exposed_temperature)
 	if(!detecting)
 		return
@@ -138,7 +134,8 @@
 		myarea.triggered_firealarms += 1
 		update_appearance()
 	alarm()
-
+*/
+/*
 /obj/machinery/firealarm/atmos_end(datum/gas_mixture/air, exposed_temperature)
 	if(!detecting)
 		return
@@ -146,13 +143,19 @@
 		triggered = FALSE
 		myarea.triggered_firealarms -= 1
 		update_appearance()
+*/
 
 /obj/machinery/firealarm/proc/alarm(mob/user)
-	if(!is_operational || !COOLDOWN_FINISHED(src, last_alarm))
+	if(!is_operational)
+		return
+	if(!COOLDOWN_FINISHED(src, last_alarm))
+		to_chat(user, "<span class='danger'>[src] is still resetting, and cannot be retriggered!</span>")
 		return
 	COOLDOWN_START(src, last_alarm, FIREALARM_COOLDOWN)
-	var/area/A = get_area(src)
-	A.firealert(src)
+	var/area/myarea = get_area(src)
+	for(var/obj/machinery/door/firedoor/reddoor in myarea.firedoors)
+		reddoor.activate()
+	myarea.firealert(src)
 	playsound(loc, 'goon/sound/machinery/FireAlarm.ogg', 75)
 	if(user)
 		log_game("[user] triggered a fire alarm at [COORD(src)]")
@@ -160,8 +163,11 @@
 /obj/machinery/firealarm/proc/reset(mob/user)
 	if(!is_operational)
 		return
-	var/area/A = get_area(src)
-	A.firereset(src)
+	var/area/myarea = get_area(src)
+	myarea.firereset(src)
+	for(var/obj/machinery/door/firedoor/reddoor in myarea.firedoors)
+		reddoor.reset()
+	myarea.fire = FALSE
 	if(user)
 		log_game("[user] reset a fire alarm at [COORD(src)]")
 
@@ -169,8 +175,7 @@
 	if(buildstage != 2)
 		return ..()
 	add_fingerprint(user)
-	var/area/A = get_area(src)
-	if(A.fire)
+	if(LAZYACCESS(modifiers, RIGHT_CLICK))
 		reset(user)
 	else
 		alarm(user)
@@ -318,6 +323,7 @@
 		return
 	. = ..()
 	if(.)
+		var/area/myarea = get_area(src)
 		LAZYREMOVE(myarea.firealarms, src)
 
 /obj/machinery/firealarm/deconstruct(disassembled = TRUE)

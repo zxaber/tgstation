@@ -19,6 +19,8 @@
 	var/fire = FALSE
 	///How many fire alarm sources do we have?
 	var/triggered_firealarms = 0
+	///List of activated firelocks
+	var/list/engaged_firelocks = list()
 	///Whether there is an atmos alarm in this area
 	var/atmosalm = FALSE
 	var/poweralm = FALSE
@@ -464,7 +466,7 @@ GLOBAL_LIST_EMPTY(teleportlocs)
 	for(var/alarm in firealarms)
 		var/obj/machinery/firealarm/F = alarm
 		F.update_fire_light(fire)
-		F.triggered = FALSE
+		//F.triggered = FALSE
 	for(var/obj/machinery/light/L in src)
 		L.update()
 
