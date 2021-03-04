@@ -31,7 +31,7 @@
 
 	//Trick to get the glowing overlay visible from a distance
 	luminosity = 1
-	var/detecting = 1
+//	var/detecting = 1
 	var/buildstage = 2 // 2 = complete, 1 = no wires, 0 = circuit gone
 	COOLDOWN_DECLARE(last_alarm)
 
@@ -83,7 +83,7 @@
 
 	var/area/myarea = get_area(src)
 
-	if(!detecting || !myarea.engaged_firelocks.len)
+	if(machine_stat || !myarea.engaged_firelocks.len)
 		. += "fire_off"
 		SSvis_overlays.add_vis_overlay(src, icon, "fire_off", layer, plane, dir)
 		SSvis_overlays.add_vis_overlay(src, icon, "fire_off", layer, EMISSIVE_PLANE, dir)
@@ -96,7 +96,7 @@
 		SSvis_overlays.add_vis_overlay(src, icon, "fire_on", layer, plane, dir)
 		SSvis_overlays.add_vis_overlay(src, icon, "fire_on", layer, EMISSIVE_PLANE, dir)
 
-	if(!panel_open && detecting && myarea.engaged_firelocks.len) //It just looks horrible with the panel open
+	if(!panel_open && !!machine_stat && myarea.engaged_firelocks.len) //It just looks horrible with the panel open
 		. += "fire_detected"
 		SSvis_overlays.add_vis_overlay(src, icon, "fire_detected", layer, plane, dir)
 		SSvis_overlays.add_vis_overlay(src, icon, "fire_detected", layer, EMISSIVE_PLANE, dir) //Pain
@@ -213,13 +213,8 @@
 
 		switch(buildstage)
 			if(2)
-				if(W.tool_behaviour == TOOL_MULTITOOL)
-					detecting = !detecting
-					if (src.detecting)
-						user.visible_message("<span class='notice'>[user] reconnects [src]'s detecting unit!</span>", "<span class='notice'>You reconnect [src]'s detecting unit.</span>")
-					else
-						user.visible_message("<span class='notice'>[user] disconnects [src]'s detecting unit!</span>", "<span class='notice'>You disconnect [src]'s detecting unit.</span>")
-					return
+				//if(W.tool_behaviour == TOOL_MULTITOOL)
+					//DEBUG -- De-emag self
 
 				else if(W.tool_behaviour == TOOL_WIRECUTTER)
 					buildstage = 1

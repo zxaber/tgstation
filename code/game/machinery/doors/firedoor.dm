@@ -228,7 +228,7 @@
 			close()
 
 /obj/machinery/door/firedoor/should_atmos_process(datum/gas_mixture/air, exposed_temperature)
-	return (exposed_temperature > T0C + 200 || exposed_temperature < BODYTEMP_COLD_DAMAGE_LIMIT) && !(obj_flags & EMAGGED) && !machine_stat
+	return (exposed_temperature > T0C + 200 || exposed_temperature < BODYTEMP_COLD_DAMAGE_LIMIT) && detecting && !machine_stat
 
 /obj/machinery/door/firedoor/atmos_expose(datum/gas_mixture/air, exposed_temperature)
 	if(!detecting)
@@ -243,7 +243,7 @@
 	reset()
 
 /obj/machinery/door/firedoor/proc/activate(type)
-	if(type == FD_NONE)
+	if(type == FD_NONE || alarmtype != FD_NONE)
 		return
 	alarmtype = type
 	if(!density)
@@ -256,7 +256,7 @@
 	//The following makes adjacent firelocks share alarm states
 	var/list/neighbors = orange(1, src)
 	for(var/obj/machinery/door/firedoor/otherreddoor in neighbors)
-		if(otherreddoor.alarmtype == FD_NONE)
+		if(otherreddoor.alarmtype == FD_NONE && (otherreddoor.x = x || otherreddoor.y = y)) //either X or Y must match; no diagonal connections
 			otherreddoor.activate(type)
 
 /obj/machinery/door/firedoor/proc/reset()
