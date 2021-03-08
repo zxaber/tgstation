@@ -31,9 +31,10 @@
 
 	//Trick to get the glowing overlay visible from a distance
 	luminosity = 1
-//	var/detecting = 1
 	var/buildstage = 2 // 2 = complete, 1 = no wires, 0 = circuit gone
 	COOLDOWN_DECLARE(last_alarm)
+	///Var that stores active area. If we somehow move, shit will break unless we dedicate ourselves to this one area.
+	var/area/myarea
 
 /obj/machinery/firealarm/Initialize(mapload, dir, building)
 	. = ..()
@@ -45,15 +46,19 @@
 		pixel_x = (dir & 3)? 0 : (dir == 4 ? -24 : 24)
 		pixel_y = (dir & 3)? (dir ==1 ? -24 : 24) : 0
 	update_appearance()
-	var/area/myarea = get_area(src)
+	myarea = get_area(src)
+	if(!myarea)
+		CRASH("DEBUG -- fire alarm missing area, location [x], [y], [z]")
 	LAZYADD(myarea.firealarms, src)
+	RegisterSignal(myarea, COMSIG_FIRELOCK_TRIGGERED, .proc/call_update_overlays_for_me_thanks)
 
 /obj/machinery/firealarm/Destroy()
-	var/area/myarea = get_area(src)
 	LAZYREMOVE(myarea.firealarms, src)
-	//if(triggered)
-	//	triggered = FALSE
-	//	myarea.triggered_firealarms -= 1
+	LAZYREMOVE(myarea.emagged_firealarms, src)
+	if(obj_flags & EMAGGED)
+		SEND_SIGNAL(myarea, COMSIG_FIREALARM_EMAG_CHANGE)
+	UnregisterSignal(myarea, COMSIG_FIRELOCK_TRIGGERED)
+	myarea = null
 	return ..()
 
 /obj/machinery/firealarm/update_icon_state()
@@ -65,6 +70,13 @@
 		return ..()
 	icon_state = "fire0"
 	return ..()
+
+/**Calls update_overlay()
+ *
+ * Because trying to tell RegisterSignal to call update_overlays on its own results in an error
+*/
+/obj/machinery/firealarm/proc/call_update_overlays_for_me_thanks()
+	update_overlays()
 
 /obj/machinery/firealarm/update_overlays()
 	. = ..()
@@ -80,8 +92,6 @@
 		. += "fire_[SEC_LEVEL_GREEN]"
 		SSvis_overlays.add_vis_overlay(src, icon, "fire_[SEC_LEVEL_GREEN]", layer, plane, dir)
 		SSvis_overlays.add_vis_overlay(src, icon, "fire_[SEC_LEVEL_GREEN]", layer, EMISSIVE_PLANE, dir)
-
-	var/area/myarea = get_area(src)
 
 	if(machine_stat || !myarea.engaged_firelocks.len)
 		. += "fire_off"
@@ -119,31 +129,10 @@
 		user.visible_message("<span class='warning'>Sparks fly out of [src]!</span>",
 							"<span class='notice'>You override the protocals of [src], disabling the thermal sensors on the fire locks in this area.</span>")
 	playsound(src, "sparks", 50, TRUE, SHORT_RANGE_SOUND_EXTRARANGE)
-	var/area/myarea = get_area(src)
 	for(var/obj/machinery/door/firedoor/reddoor in myarea)
 		reddoor.detecting = FALSE
-
-///obj/machinery/firealarm/should_atmos_process(datum/gas_mixture/air, exposed_temperature)
-//	return (exposed_temperature > T0C + 200 || exposed_temperature < BODYTEMP_COLD_DAMAGE_LIMIT) && !(obj_flags & EMAGGED) && !machine_stat
-/*
-/obj/machinery/firealarm/atmos_expose(datum/gas_mixture/air, exposed_temperature)
-	if(!detecting)
-		return
-	if(!triggered)
-		triggered = TRUE
-		myarea.triggered_firealarms += 1
-		update_appearance()
-	alarm()
-*/
-/*
-/obj/machinery/firealarm/atmos_end(datum/gas_mixture/air, exposed_temperature)
-	if(!detecting)
-		return
-	if(triggered)
-		triggered = FALSE
-		myarea.triggered_firealarms -= 1
-		update_appearance()
-*/
+	myarea.emagged_firealarms += src
+	SEND_SIGNAL(myarea, COMSIG_FIREALARM_EMAG_CHANGE)
 
 /obj/machinery/firealarm/proc/alarm(mob/user)
 	if(!is_operational)
@@ -152,9 +141,8 @@
 		to_chat(user, "<span class='danger'>[src] is still resetting, and cannot be retriggered!</span>")
 		return
 	COOLDOWN_START(src, last_alarm, FIREALARM_COOLDOWN)
-	var/area/myarea = get_area(src)
 	for(var/obj/machinery/door/firedoor/reddoor in myarea.firedoors)
-		reddoor.activate()
+		reddoor.activate(3)
 	myarea.firealert(src)
 	playsound(loc, 'goon/sound/machinery/FireAlarm.ogg', 75)
 	if(user)
@@ -163,7 +151,6 @@
 /obj/machinery/firealarm/proc/reset(mob/user)
 	if(!is_operational)
 		return
-	var/area/myarea = get_area(src)
 	myarea.firereset(src)
 	for(var/obj/machinery/door/firedoor/reddoor in myarea.firedoors)
 		reddoor.reset()
@@ -180,11 +167,11 @@
 	else
 		alarm(user)
 
-/obj/machinery/firealarm/attack_ai(mob/user)
-	return attack_hand(user)
+/obj/machinery/firealarm/attack_ai(mob/user, list/modifiers)
+	return attack_hand(user, modifiers)
 
-/obj/machinery/firealarm/attack_robot(mob/user)
-	return attack_hand(user)
+/obj/machinery/firealarm/attack_robot(mob/user, list/modifiers)
+	return attack_hand(user, modifiers)
 
 /obj/machinery/firealarm/attackby(obj/item/W, mob/living/user, params)
 	add_fingerprint(user)
@@ -213,8 +200,12 @@
 
 		switch(buildstage)
 			if(2)
-				//if(W.tool_behaviour == TOOL_MULTITOOL)
-					//DEBUG -- De-emag self
+				if(W.tool_behaviour == TOOL_MULTITOOL)
+					if(obj_flags & EMAGGED)
+						obj_flags ^= EMAGGED //remove emag flag
+						LAZYREMOVE(myarea.emagged_firealarms, src)
+						SEND_SIGNAL(myarea, COMSIG_FIREALARM_EMAG_CHANGE)
+						to_chat(user, "<span class='notice'>You restore the default protocals of [src].</span>")
 
 				else if(W.tool_behaviour == TOOL_WIRECUTTER)
 					buildstage = 1
@@ -318,7 +309,6 @@
 		return
 	. = ..()
 	if(.)
-		var/area/myarea = get_area(src)
 		LAZYREMOVE(myarea.firealarms, src)
 
 /obj/machinery/firealarm/deconstruct(disassembled = TRUE)

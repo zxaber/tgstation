@@ -25,6 +25,8 @@
 	assemblytype = /obj/structure/firelock_frame
 	armor = list(MELEE = 10, BULLET = 30, LASER = 20, ENERGY = 20, BOMB = 30, BIO = 100, RAD = 100, FIRE = 95, ACID = 70)
 	interaction_flags_machine = INTERACT_MACHINE_WIRES_IF_OPEN | INTERACT_MACHINE_ALLOW_SILICON | INTERACT_MACHINE_OPEN_SILICON | INTERACT_MACHINE_REQUIRES_SILICON | INTERACT_MACHINE_OPEN
+	///Holds our area. If we somehow get moved, things will break hard unless we just remember our origional location and pretend to still be part of that fire alarm set
+	var/area/myarea
 	///Var for if we're sniffing the air. Emagging the local fire alarm will disable this.
 	var/detecting = TRUE
 	///Holds the basic reason of why the door triggered.
@@ -35,8 +37,20 @@
 
 /obj/machinery/door/firedoor/Initialize()
 	. = ..()
-	name = "DEBUG firelock [rand(0-100)]"
+	myarea = get_area(src)
 	CalculateAffectingAreas()
+	RegisterSignal(myarea, COMSIG_FIREALARM_RESET, .proc/reset)
+	RegisterSignal(myarea, COMSIG_FIREALARM_EMAG_CHANGE, .proc/evaluate_detecting)
+
+/obj/machinery/door/firedoor/Destroy()
+	remove_from_areas()
+	affecting_areas.Cut()
+	LAZYREMOVE(myarea.emagged_firealarms, src)
+	UnregisterSignal(myarea, COMSIG_FIREALARM_RESET)
+	UnregisterSignal(myarea, COMSIG_FIREALARM_EMAG_CHANGE)
+	myarea = null
+	affecting_areas = null
+	return ..()
 
 /obj/machinery/door/firedoor/ComponentInitialize()
 	. = ..()
@@ -71,12 +85,6 @@
 		for(var/I in affecting_areas)
 			var/area/A = I
 			LAZYREMOVE(A.firedoors, src)
-
-/obj/machinery/door/firedoor/Destroy()
-	remove_from_areas()
-	affecting_areas.Cut()
-	reset()
-	return ..()
 
 /obj/machinery/door/firedoor/Bumped(atom/movable/AM)
 	if(panel_open || operating)
@@ -235,12 +243,18 @@
 		return
 	if(alarmtype != FD_NONE)
 		return //Already activated, we good
-	activate(FD_FIRE) //DEBUG -- add check for fire vs cold
+	if(exposed_temperature > T0C + 200)
+		activate(FD_FIRE)
+		return
+	if(exposed_temperature < BODYTEMP_COLD_DAMAGE_LIMIT)
+		activate(FD_COLD)
+		return
+	activate(FD_MAN) //Fallback
 
 /obj/machinery/door/firedoor/atmos_end(datum/gas_mixture/air, exposed_temperature)
-	if(!detecting)
-		return
-	reset()
+	//if(!detecting)
+	return
+	//reset()
 
 /obj/machinery/door/firedoor/proc/activate(type)
 	if(type == FD_NONE || alarmtype != FD_NONE)
@@ -248,23 +262,35 @@
 	alarmtype = type
 	if(!density)
 		INVOKE_ASYNC(src, .proc/close)
-	var/area/myarea = get_area(src)
 	myarea.engaged_firelocks |= src
 	myarea.fire = TRUE
+	SEND_SIGNAL(myarea, COMSIG_FIRELOCK_TRIGGERED)
 	//debug -- Tell fire alarm to make sounds
 
 	//The following makes adjacent firelocks share alarm states
 	var/list/neighbors = orange(1, src)
 	for(var/obj/machinery/door/firedoor/otherreddoor in neighbors)
-		if(otherreddoor.alarmtype == FD_NONE && (otherreddoor.x = x || otherreddoor.y = y)) //either X or Y must match; no diagonal connections
+		if(otherreddoor.alarmtype == FD_NONE && (otherreddoor.x == x || otherreddoor.y == y)) //either X or Y must match; no diagonal connections
 			otherreddoor.activate(type)
 
 /obj/machinery/door/firedoor/proc/reset()
 	alarmtype = FD_NONE
 	if(density)
 		open()
-	var/area/myarea = get_area(src)
 	myarea.engaged_firelocks -= src
+
+/**Evaluates if we should be detecting atmos events
+ *
+ * Emagging a fire alarm will cause all firelocks in that area to stop detecting atmos events. This can
+ * be fixed by using a multitool on the fire alarm (or destroying it). Areas have a list of emagged fire
+ * alarms, and the alarm itself will send a signal if it loses emag status (after removing itself from
+ * the list. So we'll listen to that signal for when the list gets updated and re-evaluate our own status.
+*/
+/obj/machinery/door/firedoor/proc/evaluate_detecting()
+	if(!length(myarea.emagged_firealarms))
+		detecting = TRUE
+	else
+		detecting = FALSE
 
 /obj/machinery/door/firedoor/border_only
 	icon = 'icons/obj/doors/edge_Doorfire.dmi'
