@@ -71,6 +71,8 @@
 
 	return TRUE
 
+/obj/item/computer_hardware/card_slot/can_quick_eject()
+	return stored_card || ..()
 
 /obj/item/computer_hardware/card_slot/try_eject(mob/living/user = null, forced = FALSE)
 	if(!stored_card)

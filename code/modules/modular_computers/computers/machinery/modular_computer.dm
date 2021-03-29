@@ -90,6 +90,12 @@
 	else
 		return ..()
 
+/obj/machinery/modular_computer/attack_hand_secondary(mob/user)
+	if(cpu)
+		return cpu.quick_eject(user)
+	else
+		return ..()
+
 // Process currently calls handle_power(), may be expanded in future if more things are added.
 /obj/machinery/modular_computer/process(delta_time)
 	if(cpu)

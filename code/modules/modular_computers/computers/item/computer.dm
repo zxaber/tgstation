@@ -158,6 +158,20 @@
 			. += "\The [src] is displaying [id_card2]."
 			. += id_card2.get_id_examine_strings(user)
 
+/obj/item/modular_computer/proc/quick_eject(mob/user)
+	to_chat(world, "DEBUG -- starting quick_eject proc")
+	var/list/radial_options = list()
+	for(var/obj/item/computer_hardware/hardware_item in all_components)
+		var/obj/item/ejectible = hardware_item.can_quick_eject()
+		if(!ejectible)
+			continue
+		to_chat(world, "DEBUG -- adding [hardware_item] to list")
+		radial_options += list(hardware_item, ejectible)
+	var/obj/item/computer_hardware/chosen_hardware_item = show_radial_menu(user, radial_options, require_near = TRUE)
+	if(chosen_hardware_item in all_components)
+		chosen_hardware_item.try_eject(user)
+	to_chat(world, "DEBUG -- quick_eject proc ended")
+
 /obj/item/modular_computer/RemoveID()
 	var/obj/item/computer_hardware/card_slot/card_slot2 = all_components[MC_CARD2]
 	var/obj/item/computer_hardware/card_slot/card_slot = all_components[MC_CARD]

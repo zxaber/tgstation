@@ -111,3 +111,15 @@
  */
 /obj/item/computer_hardware/proc/try_eject(mob/living/user = null, forced = FALSE)
 	return FALSE
+
+/**
+ * Returns an item that can be quickly ejected, if one exists, or null otherwise
+ *
+ * Right-clicking a modular computer will show a radial menu of all the items
+ * that can be quickly removed. This should be things like ID cards or an AI
+ * transport card, generally not actual hardware. It is up to the hardware to
+ * decide if the item it holds (or itself) can be quick-ejected. Each hardware
+ * device can currently only return one item.
+ */
+/obj/item/computer_hardware/proc/can_quick_eject()
+	return

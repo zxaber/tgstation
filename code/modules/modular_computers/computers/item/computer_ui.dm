@@ -1,4 +1,7 @@
-/obj/item/modular_computer/attack_self(mob/user)
+/obj/item/modular_computer/attack_self(mob/user, modifiers)
+	if("right" in modifiers)
+
+		return
 	. = ..()
 	ui_interact(user)
 
