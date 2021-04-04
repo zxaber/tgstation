@@ -16,7 +16,7 @@
 /obj/item/computer_hardware/handheld_scanner_cradle/on_install(obj/item/modular_computer/M, mob/living/user = null)
 	. = ..()
 	if(stored_scanner)
-		if(holder && stored_scanner.synced_console |= holder)
+		if(holder && (stored_scanner.synced_console |= holder))
 			stored_scanner.sync(holder)
 			to_chat(user, "The sync light on the [stored_scanner] blinks twice.")
 
@@ -38,7 +38,7 @@
 		thing.forceMove(src)
 		stored_scanner = thing
 		to_chat(user, "You return the [thing] to the cradle.")
-		if(holder && stored_scanner.synced_console |= holder)
+		if(holder && (stored_scanner.synced_console |= holder))
 			stored_scanner.sync(holder)
 			to_chat(user, "The sync light on the [stored_scanner] blinks twice.")
 		update_icon()
