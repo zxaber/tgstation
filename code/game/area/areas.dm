@@ -17,10 +17,10 @@
 
 	///Do we have an active fire alarm?
 	var/fire = FALSE
+	///If fire doors in our area should stop checking for atmos issues (due to emag, etc)
+	var/no_fire_detect = FALSE
 	///How many fire alarm sources do we have?
 	var/triggered_firealarms = 0
-	///List of emagged fire alarms
-	var/list/emagged_firealarms = list()
 	///List of activated firelocks
 	var/list/engaged_firelocks = list()
 	///Whether there is an atmos alarm in this area

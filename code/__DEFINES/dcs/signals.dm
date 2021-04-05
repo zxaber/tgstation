@@ -1096,5 +1096,5 @@
 #define COMSIG_FIREALARM_TRIGGERED "firealarm_triggered"
 ///Called when a fire alarm reset is triggered by a user
 #define COMSIG_FIREALARM_RESET "firealarm_reset"
-///Called when the emag status of a firealarm changes (either emagged or reset)
-#define COMSIG_FIREALARM_EMAG_CHANGE "firealarm_emag_change"
+///Called when the area's var of no_fire_detect changes. See emag_act on /obj/machinery/firealarm for more info.
+#define COMSIG_AREA_FIRE_DETECT_CHANGE "area_fire_detect_change"

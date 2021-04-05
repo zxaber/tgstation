@@ -39,15 +39,17 @@
 	. = ..()
 	myarea = get_area(src)
 	CalculateAffectingAreas()
-	RegisterSignal(myarea, COMSIG_FIREALARM_RESET, .proc/reset)
-	RegisterSignal(myarea, COMSIG_FIREALARM_EMAG_CHANGE, .proc/evaluate_detecting)
+	RegisterSignal(myarea, COMSIG_AREA_FIRE_DETECT_CHANGE, .proc/evaluate_detecting)
+
 
 /obj/machinery/door/firedoor/Destroy()
+	for(var/area/firepit in affecting_areas)
+		UnregisterSignal(firepit, COMSIG_FIREALARM_TRIGGERED)
+		UnregisterSignal(firepit, COMSIG_FIREALARM_RESET)
+		firepit.engaged_firelocks -= src
+	UnregisterSignal(myarea, COMSIG_AREA_FIRE_DETECT_CHANGE)
 	remove_from_areas()
 	affecting_areas.Cut()
-	LAZYREMOVE(myarea.emagged_firealarms, src)
-	UnregisterSignal(myarea, COMSIG_FIREALARM_RESET)
-	UnregisterSignal(myarea, COMSIG_FIREALARM_EMAG_CHANGE)
 	myarea = null
 	affecting_areas = null
 	return ..()
@@ -68,11 +70,19 @@
 		. += "<span class='notice'>The bolt locks have been <i>unscrewed</i>, but the bolts themselves are still <b>wrenched</b> to the floor.</span>"
 
 /obj/machinery/door/firedoor/proc/CalculateAffectingAreas()
+	for(var/area/old_firepit in affecting_areas)
+		UnregisterSignal(old_firepit, COMSIG_FIREALARM_TRIGGERED)
+		UnregisterSignal(old_firepit, COMSIG_FIREALARM_RESET)
+		old_firepit.engaged_firelocks -= src
 	remove_from_areas()
 	affecting_areas = get_adjacent_open_areas(src) | get_area(src)
 	for(var/I in affecting_areas)
-		var/area/A = I
-		LAZYADD(A.firedoors, src)
+		var/area/firepit = I
+		LAZYADD(firepit.firedoors, src)
+		RegisterSignal(firepit, COMSIG_FIREALARM_TRIGGERED, .proc/whole_area_triggered)
+		RegisterSignal(firepit, COMSIG_FIREALARM_RESET, .proc/reset)
+		if(alarmtype)
+			firepit.engaged_firelocks += src
 
 /obj/machinery/door/firedoor/closed
 	icon_state = "door_closed"
@@ -193,7 +203,22 @@
 	icon_state = "[base_icon_state]_[density ? "closed" : "open"]"
 
 /obj/machinery/door/firedoor/update_overlays()
+	cut_overlays()
 	. = ..()
+	if(alarmtype && !(machine_stat & NOPOWER))
+		var/mutable_appearance/strobe = new()
+		strobe.icon_state = "strobe_light"
+		switch(alarmtype)
+			if(FD_FIRE)
+				strobe.color = COLOR_ORANGE
+			if(FD_COLD)
+				strobe.color = COLOR_CYAN
+			if(FD_MAN)
+				strobe.color = COLOR_YELLOW
+		strobe.plane = 19 //It's a strobe light, no shadows please
+		strobe.pixel_z = 16 //Sit along the top edge of the firelock
+		add_overlay(strobe)
+
 	if(!welded)
 		return
 	. += density ? "welded" : "welded_open"
@@ -201,8 +226,20 @@
 /obj/machinery/door/firedoor/open()
 	. = ..()
 	latetoggle()
+	if(alarmtype)
+		addtimer(CALLBACK(src, .proc/eval_and_close), 5 SECONDS, TIMER_UNIQUE)
+
+/**
+ * Closes the firelock but only if an alarm state exists.
+ *
+ * This proc is triggered by a timer that starts if the door is forced open during
+ * an alarm state. If the alarm state is cleared before we are called, there is no
+ * need to close, so we'll just return FALSE.
+*/
+/obj/machinery/door/firedoor/proc/eval_and_close()
 	if(alarmtype != FD_NONE)
-		addtimer(CALLBACK(src, .proc/close), 5 SECONDS, TIMER_UNIQUE)
+		return close()
+	return FALSE
 
 /obj/machinery/door/firedoor/close()
 	. = ..()
@@ -256,16 +293,26 @@
 	return
 	//reset()
 
+/**
+ * Calls activate with the arg FD_MAN
+ *
+ * The whole_area_triggered proc is called via signal when a fire alarm in our area
+ * is manually pulled. Calls the activate() proc with a arg of FD_MAN.
+*/
+obj/machinery/door/firedoor/proc/whole_area_triggered()
+	activate(FD_MAN)
+
 /obj/machinery/door/firedoor/proc/activate(type)
-	if(type == FD_NONE || alarmtype != FD_NONE)
+	if(type == FD_NONE || alarmtype)
 		return
 	alarmtype = type
 	if(!density)
 		INVOKE_ASYNC(src, .proc/close)
-	myarea.engaged_firelocks |= src
-	myarea.fire = TRUE
-	SEND_SIGNAL(myarea, COMSIG_FIRELOCK_TRIGGERED)
-	//debug -- Tell fire alarm to make sounds
+	for(var/area/firepit in affecting_areas)
+		firepit.engaged_firelocks += src
+		SEND_SIGNAL(firepit, COMSIG_FIRELOCK_TRIGGERED)
+	//myarea.fire = TRUE
+	update_overlays()
 
 	//The following makes adjacent firelocks share alarm states
 	var/list/neighbors = orange(1, src)
@@ -277,7 +324,9 @@
 	alarmtype = FD_NONE
 	if(density)
 		open()
-	myarea.engaged_firelocks -= src
+	for(var/area/firepit in affecting_areas)
+		firepit.engaged_firelocks -= src
+	update_overlays()
 
 /**Evaluates if we should be detecting atmos events
  *
@@ -287,10 +336,7 @@
  * the list. So we'll listen to that signal for when the list gets updated and re-evaluate our own status.
 */
 /obj/machinery/door/firedoor/proc/evaluate_detecting()
-	if(!length(myarea.emagged_firealarms))
-		detecting = TRUE
-	else
-		detecting = FALSE
+	detecting = !myarea.no_fire_detect
 
 /obj/machinery/door/firedoor/border_only
 	icon = 'icons/obj/doors/edge_Doorfire.dmi'

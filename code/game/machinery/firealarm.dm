@@ -51,13 +51,12 @@
 		CRASH("DEBUG -- fire alarm missing area, location [x], [y], [z]")
 	LAZYADD(myarea.firealarms, src)
 	RegisterSignal(myarea, COMSIG_FIRELOCK_TRIGGERED, .proc/call_update_overlays_for_me_thanks)
+	RegisterSignal(myarea, COMSIG_AREA_FIRE_DETECT_CHANGE, .proc/call_update_overlays_for_me_thanks)
 
 /obj/machinery/firealarm/Destroy()
 	LAZYREMOVE(myarea.firealarms, src)
-	LAZYREMOVE(myarea.emagged_firealarms, src)
-	if(obj_flags & EMAGGED)
-		SEND_SIGNAL(myarea, COMSIG_FIREALARM_EMAG_CHANGE)
 	UnregisterSignal(myarea, COMSIG_FIRELOCK_TRIGGERED)
+	UnregisterSignal(myarea, COMSIG_AREA_FIRE_DETECT_CHANGE)
 	myarea = null
 	return ..()
 
@@ -93,11 +92,11 @@
 		SSvis_overlays.add_vis_overlay(src, icon, "fire_[SEC_LEVEL_GREEN]", layer, plane, dir)
 		SSvis_overlays.add_vis_overlay(src, icon, "fire_[SEC_LEVEL_GREEN]", layer, EMISSIVE_PLANE, dir)
 
-	if(machine_stat || !myarea.engaged_firelocks.len)
+	if(machine_stat || !myarea || !myarea.engaged_firelocks.len)
 		. += "fire_off"
 		SSvis_overlays.add_vis_overlay(src, icon, "fire_off", layer, plane, dir)
 		SSvis_overlays.add_vis_overlay(src, icon, "fire_off", layer, EMISSIVE_PLANE, dir)
-	else if(obj_flags & EMAGGED)
+	else if(myarea.no_fire_detect)
 		. += "fire_emagged"
 		SSvis_overlays.add_vis_overlay(src, icon, "fire_emagged", layer, plane, dir)
 		SSvis_overlays.add_vis_overlay(src, icon, "fire_emagged", layer, EMISSIVE_PLANE, dir)
@@ -118,31 +117,40 @@
 		return
 
 	if(prob(50 / severity))
-		alarm()
+		activate()
 
+/**
+ * Emag Act does special things for fire alarms.
+ *
+ * The intended function of emagging a fire alarm is to disable all
+ * atmos monitoring of fire doors in that area. To this end, the
+ * proc will set a variable on the area to TRUE, and then send a
+ * signal as a notification of this change. Fire doors and alarms
+ * will recieve the signal and update their own states accordingly.
+ * Using a multitool on any fire alarm in the area will clear the
+ * var and send the same update signal.
+*/
 /obj/machinery/firealarm/emag_act(mob/user)
-	if(obj_flags & EMAGGED)
+	if(myarea.no_fire_detect)
 		return
-	obj_flags |= EMAGGED
-	update_appearance()
+	myarea.no_fire_detect = TRUE
 	if(user)
 		user.visible_message("<span class='warning'>Sparks fly out of [src]!</span>",
 							"<span class='notice'>You override the protocals of [src], disabling the thermal sensors on the fire locks in this area.</span>")
 	playsound(src, "sparks", 50, TRUE, SHORT_RANGE_SOUND_EXTRARANGE)
-	for(var/obj/machinery/door/firedoor/reddoor in myarea)
-		reddoor.detecting = FALSE
-	myarea.emagged_firealarms += src
-	SEND_SIGNAL(myarea, COMSIG_FIREALARM_EMAG_CHANGE)
+	SEND_SIGNAL(myarea, COMSIG_AREA_FIRE_DETECT_CHANGE)
 
-/obj/machinery/firealarm/proc/alarm(mob/user)
+/obj/machinery/firealarm/proc/activate(mob/user)
 	if(!is_operational)
+		return
+	if(myarea.fire)
 		return
 	if(!COOLDOWN_FINISHED(src, last_alarm))
 		to_chat(user, "<span class='danger'>[src] is still resetting, and cannot be retriggered!</span>")
 		return
 	COOLDOWN_START(src, last_alarm, FIREALARM_COOLDOWN)
-	for(var/obj/machinery/door/firedoor/reddoor in myarea.firedoors)
-		reddoor.activate(3)
+	SEND_SIGNAL(myarea, COMSIG_FIREALARM_TRIGGERED)
+	myarea.fire = TRUE
 	myarea.firealert(src)
 	playsound(loc, 'goon/sound/machinery/FireAlarm.ogg', 75)
 	if(user)
@@ -165,7 +173,7 @@
 	if(LAZYACCESS(modifiers, RIGHT_CLICK))
 		reset(user)
 	else
-		alarm(user)
+		activate(user)
 
 /obj/machinery/firealarm/attack_ai(mob/user, list/modifiers)
 	return attack_hand(user, modifiers)
@@ -201,10 +209,9 @@
 		switch(buildstage)
 			if(2)
 				if(W.tool_behaviour == TOOL_MULTITOOL)
-					if(obj_flags & EMAGGED)
-						obj_flags ^= EMAGGED //remove emag flag
-						LAZYREMOVE(myarea.emagged_firealarms, src)
-						SEND_SIGNAL(myarea, COMSIG_FIREALARM_EMAG_CHANGE)
+					if(myarea.no_fire_detect)
+						myarea.no_fire_detect = FALSE //restore fire detection to the area's firelocks
+						SEND_SIGNAL(myarea, COMSIG_AREA_FIRE_DETECT_CHANGE)
 						to_chat(user, "<span class='notice'>You restore the default protocals of [src].</span>")
 
 				else if(W.tool_behaviour == TOOL_WIRECUTTER)
@@ -219,7 +226,7 @@
 					..()
 					var/area/A = get_area(src)
 					if(!A.fire)
-						alarm()
+						activate()
 					return
 
 			if(1)
@@ -297,7 +304,7 @@
 	if(.) //damage received
 		if(obj_integrity > 0 && !(machine_stat & BROKEN) && buildstage != 0)
 			if(prob(33))
-				alarm()
+				activate()
 
 /obj/machinery/firealarm/singularity_pull(S, current_size)
 	if (current_size >= STAGE_FIVE) // If the singulo is strong enough to pull anchored objects, the fire alarm experiences integrity failure
@@ -350,7 +357,7 @@
 	A.party = FALSE
 	A.cut_overlay(party_overlay)
 
-/obj/machinery/firealarm/partyalarm/alarm()
+/obj/machinery/firealarm/partyalarm/activate()
 	if (machine_stat & (NOPOWER|BROKEN))
 		return
 	var/area/A = get_area(src)
