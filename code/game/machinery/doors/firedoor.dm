@@ -210,7 +210,7 @@
 		strobe.icon_state = "strobe_light"
 		switch(alarmtype)
 			if(FD_FIRE)
-				strobe.color = COLOR_ORANGE
+				strobe.color = COLOR_RED
 			if(FD_COLD)
 				strobe.color = COLOR_CYAN
 			if(FD_MAN)
@@ -305,6 +305,7 @@ obj/machinery/door/firedoor/proc/whole_area_triggered()
 /obj/machinery/door/firedoor/proc/activate(type)
 	if(type == FD_NONE || alarmtype)
 		return
+	to_chat(world, "DEBUG -- my alarm type is [alarmtype] and I just activated with [type]")
 	alarmtype = type
 	if(!density)
 		INVOKE_ASYNC(src, .proc/close)
