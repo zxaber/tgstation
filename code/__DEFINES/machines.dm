@@ -91,6 +91,7 @@
 //Program categories
 #define PROGRAM_CATEGORY_CREW "Crew"
 #define PROGRAM_CATEGORY_ENGI "Engineering"
+#define PROGRAM_CATEGORY_MEDI "Medical"
 #define PROGRAM_CATEGORY_ROBO "Robotics"
 #define PROGRAM_CATEGORY_SUPL "Supply"
 #define PROGRAM_CATEGORY_MISC "Other"
