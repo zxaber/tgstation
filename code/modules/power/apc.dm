@@ -1122,8 +1122,8 @@
 /obj/machinery/power/apc/proc/malfoccupy(mob/living/silicon/ai/malf)
 	if(!istype(malf))
 		return
-	if(istype(malf.loc, /obj/machinery/power/apc)) // Already in an APC
-		to_chat(malf, "<span class='warning'>You must evacuate your current APC first!</span>")
+	if(!isturf(malf.loc) // Look I'm just cutting down on edge-case mech/AIcard shitcode here. Sorry if I killed a favorite strat.
+		to_chat(malf, "<span class='warning'>Shunting has core process dependancy!</span>")
 		return
 	if(!malf.can_shunt)
 		to_chat(malf, "<span class='warning'>You cannot shunt!</span>")
@@ -1131,18 +1131,23 @@
 	if(!is_station_level(z))
 		return
 	malf.ShutOffDoomsdayDevice()
-	occupier = new /mob/living/silicon/ai(src, malf.laws, malf) //DEAR GOD WHY? //IKR????
-	occupier.adjustOxyLoss(malf.getOxyLoss())
+
+	var/mob/living/silicon/ai/decoy = new(malf.loc) //DEAR GOD WHY? //IKR????
+	decoy.icon = malf.icon
+	decoy.icon_state = malf.icon_state
+	decoy.name = malf.name
+	decoy.laws.duplicate(malf.laws)
+	decoy.adjustOxyLoss(malf.getOxyLoss())
+	decoy.shunted = TRUE
+	var/mob/living/puller = malf.pulledby
+	if(puller) //edge case check
+		puller.start_pulling(decoy, supress_message = true)
+	malf.forceMove(src)
+	occupier = malf
+	malf.parent = decoy
 	if(!findtext(occupier.name, "APC Copy"))
 		occupier.name = "[malf.name] APC Copy"
-	if(malf.parent)
-		occupier.parent = malf.parent
-	else
-		occupier.parent = malf
-	malf.shunted = 1
-	occupier.eyeobj.name = "[occupier.name] (AI Eye)"
-	if(malf.parent)
-		qdel(malf)
+		occupier.eyeobj.name = "[occupier.name] (AI Eye)"
 	var/datum/action/innate/core_return/CR = new
 	CR.Grant(occupier)
 	occupier.cancel_camera()
@@ -1150,14 +1155,19 @@
 /obj/machinery/power/apc/proc/malfvacate(forced)
 	if(!occupier)
 		return
-	if(occupier.parent && occupier.parent.stat != DEAD)
-		occupier.mind.transfer_to(occupier.parent)
-		occupier.parent.shunted = 0
-		occupier.parent.setOxyLoss(occupier.getOxyLoss())
-		occupier.parent.cancel_camera()
-		qdel(occupier)
+	var/mob/living/silicon/ai/decoy = occupier.parent
+	if(decoy && decoy.stat != DEAD && isturf(decoy.loc))
+		occupier.forceMove(decoy.loc)
+		var/mob/living/puller = decoy.pulledby
+		if(puller) //edge case check
+			puller.start_pulling(occupier, supress_message = true)
+		occupier.parent = null
+		occupier.setOxyLoss(decoy.getOxyLoss())
+		qdel(decoy)
+		occupier.cancel_camera()
+		occupier = null
 	else
-		to_chat(occupier, "<span class='danger'>Primary core damaged, unable to return core processes.</span>")
+		to_chat(occupier, "<span class='danger'>Primary core [decoy.stat == DEAD ? "damaged" : "compromised"], unable to return core processes.</span>")
 		if(forced)
 			occupier.forceMove(drop_location())
 			occupier.death()

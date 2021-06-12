@@ -26,6 +26,20 @@
 	owner = null
 	return ..()
 
+/**
+ * Duplicates the law-relevent vars and lists from source to src
+ *
+ * It's a hard drive toaster but for AI laws. Copies straigt across.
+ */
+/datum/ai_laws/proc/duplicate(/datum/ai_laws/source)
+	name = source.name
+	zeroth = source.zeroth
+	zeroth_borg = source.zeroth_borg
+	inherent = source.inherent.Copy()
+	ion = source.ion.Copy()
+	hacked = source.hacked.Copy()
+	id = source.id
+
 /datum/ai_laws/proc/lawid_to_type(lawid)
 	var/all_ai_laws = subtypesof(/datum/ai_laws)
 	for(var/al in all_ai_laws)
