@@ -62,9 +62,9 @@
 		. += span_notice("The status display reads: Recharge power <b>[siunit(recharge_power, "W", 1)]</b>.")
 
 /obj/machinery/mech_bay_recharge_port/power_change()
+	. = ..()
 	if(!(machine_stat & NOPOWER))
 		begin_processing()
-	return ..()
 
 
 /**
@@ -100,7 +100,7 @@
 			for(var/obj/machinery/machine in recharging_turf)
 				if(istype(machine, /obj/machinery/power))
 					continue //nice try
-				electron_cache = locate(/obj/item/stock_parts/cell) in machine.contents
+				electron_cache = machine.get_cell()
 				if(electron_cache)
 					recharging_machine = machine
 					recharging_machine_ref = WEAKREF(recharging_machine)
@@ -119,11 +119,7 @@
 	var/obj/recharging_machine = recharging_machine_ref?.resolve()
 	var/obj/item/stock_parts/cell/electron_cache = recharging_powercell_ref?.resolve()
 
-	if(!recharging_machine)
-		end_processing()
-		return
-
-	if(recharging_machine.loc !=  recharging_turf)
+	if(!recharging_machine || (recharging_machine.loc != recharging_turf))
 		recharging_machine = null
 		recharging_machine_ref = null
 		electron_cache = null
