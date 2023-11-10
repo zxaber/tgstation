@@ -11,7 +11,12 @@
 
 /datum/looping_sound/siren
 	mid_sounds = list('sound/items/weeoo1.ogg' = 1)
-	mid_length = 15
+	mid_length = 4
+	volume = 20
+
+/datum/looping_sound/siren_fast
+	mid_sounds = list('sound/items/weeoo2.ogg' = 1)
+	mid_length = 3
 	volume = 20
 
 /datum/looping_sound/tape_recorder_hiss

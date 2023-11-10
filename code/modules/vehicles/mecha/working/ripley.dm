@@ -116,6 +116,8 @@
 	var/mutable_appearance/sirenlights
 	///Looping sound datum for the Siren audio
 	var/datum/looping_sound/siren/weewooloop
+	///Looping sound darum for overclocked Siren audio
+	var/datum/looping_sound/siren_fast/weewooloopfast
 
 /datum/armor/mecha_paddy
 	melee = 40
@@ -130,6 +132,8 @@
 	. = ..()
 	weewooloop = new(src, FALSE, FALSE)
 	weewooloop.volume = 100
+	weewooloopfast = new(src, FALSE, FALSE)
+	weewooloopfast.volume = 100
 
 /obj/vehicle/sealed/mecha/ripley/paddy/generate_actions()
 	. = ..()
@@ -145,9 +149,13 @@
 /obj/vehicle/sealed/mecha/ripley/paddy/proc/togglesiren(force_off = FALSE)
 	if(force_off || siren)
 		weewooloop.stop()
+		weewooloopfast.stop()
 		siren = FALSE
 	else
-		weewooloop.start()
+		if(overclock_mode)
+			weewooloopfast.start()
+		else
+			weewooloop.start()
 		siren = TRUE
 	for(var/mob/occupant as anything in occupants)
 		balloon_alert(occupant, "siren [siren ? "activated" : "disabled"]")
@@ -169,6 +177,18 @@
 /obj/vehicle/sealed/mecha/ripley/paddy/Destroy()
 	QDEL_NULL(weewooloop)
 	return ..()
+
+//Swaps to the correct speed siren
+/obj/vehicle/sealed/mecha/ripley/paddy/toggle_overclock(forced_state = null)
+	. = ..()
+	if(siren)
+		weewooloop.stop()
+		weewooloopfast.stop()
+		if(overclock_mode)
+			weewooloopfast.start()
+		else
+			weewooloop.start()
+
 
 /datum/action/vehicle/sealed/mecha/siren
 	name = "Toggle External Siren and Lights"
